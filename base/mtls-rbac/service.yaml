@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rest-proxy
+  namespace: operator
+  labels:
+    app: rest-proxy
+spec:
+  ports:
+  - port: 8082
+    name: extenal
+    protocol: TCP
+    targetPort: 8082
+  clusterIP: None
+  selector:
+    app: rest-proxy

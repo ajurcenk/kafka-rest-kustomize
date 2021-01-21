@@ -1,0 +1,37 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+generatorOptions:
+  disableNameSuffixHash: true
+
+bases:
+- ../../../base/mtls-rbac
+
+patchesStrategicMerge:
+  - redines_probe.yaml
+
+resources:
+  - secrets.yaml
+  - service.yaml
+
+secretGenerator:
+- name: rest-proxy-secret-truststore-jks
+  files:
+  - ./jks/truststore.jks
+- name: rest-proxy-secret-keystore-jks
+  files:
+  - ./jks/user1.keystore.jks
+- name: rest-proxy-secret-rest-proxy-keystore-jks
+  files:
+  - ./jks/rest-proxy_keystore.jks
+- name: rest-proxy-secret-mdspublic-pem
+  files:
+  - ./mds/mdspublic.pem
+
+configMapGenerator:
+- name: rest-proxy-configmap
+  literals:
+  - KAFKA_REST_BOOTSTRAP_SERVERS=SASL_SSL://kafka-0.kafka.operator.svc.cluster.local:9073
+  - KAFKA_REST_CLIENT_BOOTSTRAP_SERVERS=SASL_SSL://kafka-0.kafka.operator.svc.cluster.local:9073
+  - KAFKA_REST_CONFLUENT_MONITORING_INTERCEPTOR_BOOTSTRAP_SERVERS=SSL://kafka.operator.svc.cluster.local:9092
+  - KAFKA_REST_CONFLUENT_METADATA_BOOTSTRAP_SERVER_URLS=http://kafka.operator.svc.cluster.local:8091
+  - KAFKA_REST_SCHEMA_REGISTRY_URL=https://schemaregistry-0.schemaregistry.operator.svc.cluster.local:8081

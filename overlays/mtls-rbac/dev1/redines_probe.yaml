@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rest-proxy
+  namespace: operator
+spec:
+  serviceName: "rest-proxy"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rest-proxy
+  template:
+    metadata:
+      namespace: operator
+      labels:
+        app: rest-proxy
+    spec:
+      containers:
+      - name: rest-proxy
+        readinessProbe:
+          httpGet:
+            path: /brokers
+            port: 9082
+            httpHeaders:
+              - name: Authorization
+                value: Basic dXNlcjE6a2Fma2Etc2VjcmV0
+          failureThreshold: 3
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10

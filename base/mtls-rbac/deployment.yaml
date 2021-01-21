@@ -1,0 +1,204 @@
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rest-proxy
+  namespace: operator
+spec:
+  serviceName: "rest-proxy"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rest-proxy
+  template:
+    metadata:
+      namespace: operator
+      labels:
+        app: rest-proxy
+    spec:
+      containers:
+      - name: rest-proxy
+        image: confluentinc/cp-kafka-rest:6.0.1
+        env:
+          - name: KAFKAREST_HEAP_OPTS
+            value: "-Xmx2g -Xmn2g"
+          # Fix issue with TokenUserLoginCallbackHandler classpath
+          - name: CUB_CLASSPATH
+            value: "/etc/confluent/docker/docker-utils.jar:/usr/share/java/confluent-control-center/*:/usr/share/java/rest-utils/*:/usr/share/java/confluent-common/*:/usr/share/java/cp-base-new/*"
+          # Config providers
+          - name: "KAFKA_REST_CONFIG_PROVIDERS"
+            value: "file"
+          - name: "KAFKA_REST_CONFIG_PROVIDERS_FILE_CLASS"
+            value: "org.apache.kafka.common.config.provider.FileConfigProvider"
+          # Kafka rest ID
+          - name: KAFKA_REST_ID
+            value: "kafka-rest-proxy-02"
+          # ZK
+          - name: KAFKA_REST_ZOOKEEPER_CONNECT
+            value: "zookeeper.operator.svc.cluster.local:2181/kafka-operator"
+          # Kafka Rest Configuration
+          - name: KAFKA_REST_LISTENERS
+            value: "http://0.0.0.0:9082,https://0.0.0.0:8082"
+          - name: KAFKA_REST_SSL_KEYSTORE_LOCATION
+            value: "/tmp/rest-proxy_keystore.jks"
+          - name: KAFKA_REST_SSL_KEYSTORE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "rest-proxy-secrets"
+                key: "KAFKA_REST_SSL_KEYSTORE_PASSWORD"
+          - name: KAFKA_REST_SSL_KEY_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "rest-proxy-secrets"
+                key: "KAFKA_REST_SSL_KEY_PASSWORD"
+          - name: KAFKA_REST_SSL_TRUSTSTORE_LOCATION
+            value: "/tmp/truststore.jks"
+          - name: KAFKA_REST_SSL_TRUSTSTORE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "rest-proxy-secrets"
+                key: "KAFKA_REST_SSL_TRUSTSTORE_PASSWORD"
+          # Kafka Broker Configuration
+          - name: KAFKA_REST_BOOTSTRAP_SERVERS
+            valueFrom:
+              configMapKeyRef:
+                name: "rest-proxy-configmap"
+                key: KAFKA_REST_BOOTSTRAP_SERVERS
+          - name: KAFKA_REST_CLIENT_BOOTSTRAP_SERVERS
+            valueFrom:
+              configMapKeyRef:
+                name: "rest-proxy-configmap"
+                key: KAFKA_REST_CLIENT_BOOTSTRAP_SERVERS
+          - name: KAFKA_REST_CLIENT_SECURITY_PROTOCOL
+            value: "SASL_SSL"
+          - name: KAFKA_REST_CLIENT_SASL_MECHANISM
+            value: "OAUTHBEARER"
+          - name: KAFKA_REST_CLIENT_SSL_KEYSTORE_LOCATION
+            value: "/tmp/user1.keystore.jks"
+          - name: KAFKA_REST_CLIENT_SSL_KEYSTORE_LOCATION
+            value: "/tmp/user1.keystore.jks"
+          - name: KAFKA_REST_CLIENT_SSL_KEYSTORE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "rest-proxy-secrets"
+                key: "KAFKA_REST_CLIENT_SSL_KEYSTORE_PASSWORD"
+          - name: KAFKA_REST_CLIENT_SSL_KEY_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "rest-proxy-secrets"
+                key: "KAFKA_REST_CLIENT_SSL_KEY_PASSWORD"
+          - name: KAFKA_REST_CLIENT_SSL_TRUSTSTORE_LOCATION
+            value: "/tmp/truststore.jks"
+          - name: KAFKA_REST_CLIENT_SSL_TRUSTSTORE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "rest-proxy-secrets"
+                key: "KAFKA_REST_CLIENT_SSL_TRUSTSTORE_PASSWORD"
+          - name: KAFKA_REST_CLIENT_SASL_LOGIN_CALLBACK_HANDLER_CLASS
+            value: "io.confluent.kafka.clients.plugins.auth.token.TokenUserLoginCallbackHandler"
+          - name: KAFKA_REST_CLIENT_SASL_JAAS_CONFIG
+            valueFrom:
+              secretKeyRef:
+                name: "rest-proxy-secrets"
+                key: "KAFKA_REST_CLIENT_SASL_JAAS_CONFIG"
+          # RBAC Configuration
+          - name: KAFKA_REST_KAFKA_REST_RESOURCE_EXTENSION_CLASS
+            value: "io.confluent.kafkarest.security.KafkaRestSecurityResourceExtension"
+          - name: KAFKA_REST_REST_SERVLET_INITIALIZOR_CLASSES
+            value: "io.confluent.common.security.jetty.initializer.InstallBearerOrBasicSecurityHandler"
+          - name: KAFKA_REST_PUBLIC_KEY_PATH
+            value: "/tmp/mdspublic.pem"
+          # Credentials to use with the MDS
+          - name: KAFKA_REST_CONFLUENT_METADATA_BOOTSTRAP_SERVER_URLS
+            valueFrom:
+              configMapKeyRef:
+                name: "rest-proxy-configmap"
+                key: KAFKA_REST_CONFLUENT_METADATA_BOOTSTRAP_SERVER_URLS
+          - name: KAFKA_REST_CONFLUENT_METADATA_BASIC_AUTH_USER_INFO
+            valueFrom:
+              secretKeyRef:
+                name: "rest-proxy-secrets"
+                key: "KAFKA_REST_CONFLUENT_METADATA_BASIC_AUTH_USER_INFO"
+          - name: KAFKA_REST_CONFLUENT_METADATA_HTTP_AUTH_CREDENTIALS_PROVIDER
+            value: "BASIC"
+          # Schema registry
+          - name: KAFKA_REST_SCHEMA_REGISTRY_URL        
+            valueFrom:
+              configMapKeyRef:
+                name: "rest-proxy-configmap"
+                key: KAFKA_REST_SCHEMA_REGISTRY_URL
+          - name: KAFKA_REST_SCHEMA_REGISTRY_SSL_TRUSTSTORE_LOCATION
+            value: "/tmp/truststore.jks"
+          - name: KAFKA_REST_SCHEMA_REGISTRY_SSL_TRUSTSTORE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "rest-proxy-secrets"
+                key: "KAFKA_REST_SCHEMA_REGISTRY_SSL_TRUSTSTORE_PASSWORD"
+          # Monitoring Configuration
+          - name: KAFKA_REST_CONFLUENT_MONITORING_INTERCEPTOR_BOOTSTRAP_SERVERS
+            valueFrom:
+              configMapKeyRef:
+                name: "rest-proxy-configmap"
+                key: KAFKA_REST_CONFLUENT_MONITORING_INTERCEPTOR_BOOTSTRAP_SERVERS
+          - name: KAFKA_REST_CONFLUENT_MONITORING_INTERCEPTOR_CLIENT_SECURITY_PROTOCOL
+            value: "SSL"
+          - name: KAFKA_REST_CONFLUENT_MONITORING_INTERCEPTOR_KEYSTORE_LOCATION
+            value: "/tmp/user1.keystore.jks"
+          - name: KAFKA_REST_CONFLUENT_MONITORING_INTERCEPTOR_SSL_KEYSTORE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "rest-proxy-secrets"
+                key: "KAFKA_REST_CONFLUENT_MONITORING_INTERCEPTOR_SSL_KEYSTORE_PASSWORD"
+          - name: KAFKA_REST_CONFLUENT_MONITORING_INTERCEPTOR_SSL_KEY_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "rest-proxy-secrets"
+                key: "KAFKA_REST_CONFLUENT_MONITORING_INTERCEPTOR_SSL_KEY_PASSWORD"
+          - name: KAFKA_REST_CONFLUENT_MONITORING_INTERCEPTOR_SSL_TRUSTSTORE_LOCATION
+            value: "/tmp/truststore.jks"
+          - name: KAFKA_REST_CONFLUENT_MONITORING_INTERCEPTOR_SSL_TRUSTSTORE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "rest-proxy-secrets"
+                key: "KAFKA_REST_CONFLUENT_MONITORING_INTERCEPTOR_SSL_TRUSTSTORE_PASSWORD"
+        ports:
+        - containerPort: 8082
+          name: external
+          protocol: TCP
+        volumeMounts:
+          - name: rest-proxy-truststore
+            mountPath: /tmp/truststore.jks
+            subPath: truststore.jks
+          - name:  rest-proxy-keystore
+            mountPath: /tmp/user1.keystore.jks
+            subPath: user1.keystore.jks
+          - name:  rest-proxy-secret-mdspublic
+            mountPath: /tmp/mdspublic.pem
+            subPath: mdspublic.pem
+          - name: rest-proxy-secret-rest-proxy-keystore
+            mountPath: /tmp/rest-proxy_keystore.jks
+            subPath: rest-proxy_keystore.jks
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "500m"
+        command:
+          - /bin/bash
+          - -c
+        args: ["/etc/confluent/docker/run"]
+      volumes:
+        - name: rest-proxy-truststore
+          secret:
+            secretName: "rest-proxy-secret-truststore-jks"
+        - name: rest-proxy-keystore
+          secret:
+            secretName: "rest-proxy-secret-keystore-jks"
+        - name: rest-proxy-secret-mdspublic
+          secret:
+            secretName: "rest-proxy-secret-mdspublic-pem"
+        - name: rest-proxy-secret-rest-proxy-keystore
+          secret:
+            secretName: "rest-proxy-secret-rest-proxy-keystore-jks"
