@@ -1,4 +1,4 @@
-# kafka-rest kustomize deployement
+# kafka-rest kustomize deployment
 
 ## Usage
 
